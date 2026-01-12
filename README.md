@@ -1,19 +1,21 @@
 # Discord Registration Bot
 
-Bot de Discord para registro de usuarios con validación de email.
+Bot de Discord para registro y validación de usuarios con HubSpot.
 
 ## Características
 
-- 👋 Envía mensaje de bienvenida automático cuando un usuario entra al servidor
-- 📋 Muestra términos de conducta que el usuario debe aceptar
+- 🔒 Detecta usuarios con rol "No Verificado" al entrar al servidor
+- 👋 Envía mensaje de bienvenida automático con términos de conducta
 - 📧 Solicita correo electrónico mediante un modal
-- ✅ Valida el formato del correo electrónico
-- 🔄 Preparado para integración con HubSpot (pendiente de implementar)
+- ✅ Valida el email contra HubSpot (a través de la API de HeroLabs)
+- 🎭 Quita el rol "No Verificado" tras validación exitosa
+- 🔄 Botón de reintentar si la validación falla
 
 ## Requisitos
 
 - Node.js 18.0.0 o superior
 - Una aplicación de Discord con un bot configurado
+- Cuenta en la API de HeroLabs para validación con HubSpot
 
 ## Configuración
 
@@ -24,8 +26,8 @@ Bot de Discord para registro de usuarios con validación de email.
 3. Ve a la sección "Bot" y crea un bot
 4. Copia el token del bot
 5. Activa los siguientes **Privileged Gateway Intents**:
-   - SERVER MEMBERS INTENT
-   - MESSAGE CONTENT INTENT
+   - ✅ SERVER MEMBERS INTENT (obligatorio)
+   - ✅ MESSAGE CONTENT INTENT
 
 ### 2. Invitar el bot al servidor
 
@@ -33,14 +35,21 @@ Genera la URL de invitación con los siguientes permisos:
 
 - `View Channels`
 - `Send Messages`
-- `Manage Roles` (si deseas asignar roles automáticamente)
+- `Manage Roles`
 
 Scopes necesarios:
 
 - `bot`
 - `applications.commands`
 
-### 3. Configurar variables de entorno
+### 3. Crear rol "No Verificado"
+
+1. En tu servidor de Discord, crea un rol llamado "No Verificado"
+2. Copia el ID del rol (clic derecho → "Copiar ID del rol")
+3. Configura los canales para que este rol NO pueda verlos
+4. Asigna este rol a los usuarios que necesiten validación
+
+### 4. Configurar variables de entorno
 
 ```bash
 cp .env.example .env
@@ -49,17 +58,19 @@ cp .env.example .env
 Edita el archivo `.env` con tus credenciales:
 
 ```env
-DISCORD_TOKEN=tu_token_aqui
-HUBSPOT_API_KEY=tu_api_key_aqui
+DISCORD_TOKEN=tu_token_del_bot
+UNVERIFIED_ROLE_ID=id_del_rol_no_verificado
+API_EMAIL=tu_email_api
+API_PASSWORD=tu_password_api
 ```
 
-### 4. Instalar dependencias
+### 5. Instalar dependencias
 
 ```bash
 npm install
 ```
 
-### 5. Ejecutar el bot
+### 6. Ejecutar el bot
 
 ```bash
 # Producción
@@ -74,35 +85,71 @@ npm run dev
 ```
 bot-discord/
 ├── src/
-│   ├── index.js              # Entrada principal del bot
+│   ├── index.js                # Entrada principal del bot
 │   ├── config/
-│   │   └── constants.js      # Constantes y configuración
+│   │   └── constants.js        # Constantes y configuración
 │   ├── events/
-│   │   └── guildMemberAdd.js # Evento de nuevo miembro
-│   └── handlers/
-│       └── registration.js   # Lógica de registro
-├── .env.example              # Ejemplo de variables de entorno
+│   │   └── guildMemberAdd.js   # Evento de nuevo miembro
+│   ├── handlers/
+│   │   └── registration.js     # Lógica de registro y validación
+│   └── services/
+│       └── hubspotValidator.js # Validación con HubSpot via API
+├── .env.example                # Ejemplo de variables de entorno
+├── .gitignore
 ├── package.json
 └── README.md
 ```
 
 ## Flujo del Bot
 
-1. Usuario entra al servidor
-2. Bot envía DM con términos de conducta y botón de aceptar
-3. Usuario hace clic en "Aceptar y Registrarme"
-4. Se abre modal solicitando correo electrónico
-5. Usuario ingresa correo y envía
-6. Bot valida formato del correo
-7. (Pendiente) Validación con HubSpot
-8. Confirmación de registro exitoso
+```
+Usuario entra al servidor
+         ↓
+   ¿Tiene rol "No Verificado"?
+         ↓
+    ┌────┴────┐
+    SÍ        NO
+    ↓         ↓
+  DM con    (nada)
+  términos
+    ↓
+  Modal de email
+    ↓
+  Validación HubSpot
+    ↓
+    ┌────┴────┐
+  VÁLIDO    ERROR
+    ↓         ↓
+  Quita    Botón de
+  rol      reintentar
+    ↓
+  Acceso completo
+```
 
-## TODO
+## Despliegue
 
-- [ ] Implementar validación con HubSpot API
-- [ ] Asignar rol verificado automáticamente
-- [ ] Agregar logging persistente
-- [ ] Manejar casos donde el usuario tiene DMs desactivados
+### AWS Lightsail (Recomendado - $3.50/mes)
+
+1. Crea una instancia en [Lightsail](https://lightsail.aws.amazon.com)
+2. Selecciona blueprint: Node.js
+3. Plan: $3.50/mes (512 MB RAM)
+4. Clona el repositorio y configura
+
+### Railway (Fácil - $5 crédito gratis/mes)
+
+1. Ve a [railway.app](https://railway.app)
+2. Conecta tu repositorio de GitHub
+3. Añade las variables de entorno
+4. Deploy automático con cada push
+
+### PM2 (para servidores)
+
+```bash
+npm install -g pm2
+pm2 start src/index.js --name "discord-bot"
+pm2 startup
+pm2 save
+```
 
 ## Licencia
 
