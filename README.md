@@ -128,21 +128,50 @@ Usuario entra al servidor
 
 ## Despliegue
 
-### AWS Lightsail (Recomendado - $3.50/mes)
+### 🐳 Docker (Recomendado)
+
+La forma más fácil de desplegar:
+
+```bash
+# 1. Configura tu .env
+cp .env.example .env
+nano .env  # edita con tus credenciales
+
+# 2. Construye y ejecuta con Docker Compose
+docker compose up -d
+
+# Ver logs
+docker compose logs -f
+
+# Detener
+docker compose down
+```
+
+O sin Docker Compose:
+
+```bash
+# Construir imagen
+docker build -t discord-bot .
+
+# Ejecutar
+docker run -d --name discord-bot --env-file .env discord-bot
+```
+
+### AWS Lightsail ($3.50/mes)
 
 1. Crea una instancia en [Lightsail](https://lightsail.aws.amazon.com)
-2. Selecciona blueprint: Node.js
+2. Selecciona blueprint: Node.js o Docker
 3. Plan: $3.50/mes (512 MB RAM)
-4. Clona el repositorio y configura
+4. Clona el repositorio y ejecuta con Docker
 
 ### Railway (Fácil - $5 crédito gratis/mes)
 
 1. Ve a [railway.app](https://railway.app)
 2. Conecta tu repositorio de GitHub
 3. Añade las variables de entorno
-4. Deploy automático con cada push
+4. Deploy automático con cada push (detecta Dockerfile)
 
-### PM2 (para servidores)
+### PM2 (sin Docker)
 
 ```bash
 npm install -g pm2

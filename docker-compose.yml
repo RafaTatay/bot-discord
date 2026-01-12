@@ -1,0 +1,14 @@
+services:
+  discord-bot:
+    build: .
+    container_name: discord-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    # Alternativa: definir variables directamente
+    # environment:
+    #   - DISCORD_TOKEN=${DISCORD_TOKEN}
+    #   - UNVERIFIED_ROLE_ID=${UNVERIFIED_ROLE_ID}
+    #   - API_EMAIL=${API_EMAIL}
+    #   - API_PASSWORD=${API_PASSWORD}
+
