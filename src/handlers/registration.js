@@ -17,6 +17,7 @@ import {
   SUPPORT_EMAIL,
 } from '../config/constants.js';
 import { validateContactInHubSpot } from '../services/hubspotValidator.js';
+import { getRoles, clearRoles } from '../services/pendingRolesStore.js';
 
 export async function handleInteraction(interaction) {
   if (interaction.isButton()) {
@@ -164,8 +165,12 @@ async function removeUnverifiedRole(interaction) {
       try {
         const member = await guild.members.fetch(interaction.user.id);
         if (member) {
+          // Quitar rol "No Verificado"
           await member.roles.remove(UNVERIFIED_ROLE_ID);
           console.log(`✅ Rol "No Verificado" removido de ${interaction.user.tag} en ${guild.name}`);
+          
+          // Restaurar roles guardados
+          await restoreSavedRoles(member, guild);
           return;
         }
       } catch (err) {
@@ -175,6 +180,35 @@ async function removeUnverifiedRole(interaction) {
     console.warn('⚠️ No se encontró al usuario en ningún servidor');
   } catch (error) {
     console.error(`❌ Error removiendo rol de ${interaction.user.tag}:`, error.message);
+  }
+}
+
+/**
+ * Restaura los roles guardados al usuario después de completar la verificación
+ * @param {GuildMember} member - Miembro del servidor
+ * @param {Guild} guild - Servidor de Discord
+ */
+async function restoreSavedRoles(member, guild) {
+  const savedRoleIds = getRoles(guild.id, member.user.id);
+  
+  if (savedRoleIds.length === 0) {
+    console.log(`ℹ️ No hay roles guardados para restaurar a ${member.user.tag}`);
+    return;
+  }
+  
+  try {
+    // Filtrar roles que aún existen en el servidor
+    const validRoles = savedRoleIds.filter(roleId => guild.roles.cache.has(roleId));
+    
+    if (validRoles.length > 0) {
+      await member.roles.add(validRoles);
+      console.log(`🔄 Roles restaurados a ${member.user.tag}: [${validRoles.join(', ')}]`);
+    }
+    
+    // Limpiar los roles del store
+    clearRoles(guild.id, member.user.id);
+  } catch (error) {
+    console.error(`❌ Error al restaurar roles de ${member.user.tag}:`, error.message);
   }
 }
 

@@ -5,6 +5,7 @@ import {
   EmbedBuilder,
 } from 'discord.js';
 import { BUTTON_IDS, COLORS, TERMS_OF_CONDUCT, UNVERIFIED_ROLE_ID } from '../config/constants.js';
+import { saveRoles } from '../services/pendingRolesStore.js';
 
 export async function handleGuildMemberAdd(member) {
   if (!UNVERIFIED_ROLE_ID) {
@@ -26,9 +27,41 @@ export async function handleGuildMemberAdd(member) {
     return;
   }
 
-  // El usuario tiene el rol "No Verificado" - enviar DM de verificación
+  // El usuario tiene el rol "No Verificado" - guardar sus roles y quitárselos
   console.log(`🔒 Usuario ${member.user.tag} tiene rol "No Verificado". Iniciando flujo de verificación.`);
+  
+  await saveAndRemoveRoles(refreshedMember);
   await sendVerificationDM(member);
+}
+
+/**
+ * Guarda los roles del usuario y los elimina (excepto "No Verificado" y @everyone)
+ * @param {GuildMember} member - Miembro del servidor
+ */
+async function saveAndRemoveRoles(member) {
+  const guildId = member.guild.id;
+  const userId = member.user.id;
+  
+  // Obtener todos los roles del usuario excepto @everyone y "No Verificado"
+  const rolesToSave = member.roles.cache
+    .filter(role => role.id !== member.guild.id && role.id !== UNVERIFIED_ROLE_ID)
+    .map(role => role.id);
+  
+  if (rolesToSave.length === 0) {
+    console.log(`ℹ️ Usuario ${member.user.tag} no tiene roles adicionales para guardar.`);
+    return;
+  }
+  
+  // Guardar los roles en el store
+  saveRoles(guildId, userId, rolesToSave);
+  
+  // Quitar todos los roles guardados
+  try {
+    await member.roles.remove(rolesToSave);
+    console.log(`🔄 Roles removidos de ${member.user.tag}: [${rolesToSave.join(', ')}]`);
+  } catch (error) {
+    console.error(`❌ Error al remover roles de ${member.user.tag}:`, error.message);
+  }
 }
 
 async function sendVerificationDM(member) {
