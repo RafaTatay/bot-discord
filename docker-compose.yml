@@ -5,6 +5,11 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    volumes:
+      # Monta carpeta local para persistir logs fuera del contenedor
+      - ./logs:/app/logs
+    environment:
+      - LOGS_DIR=/app/logs
     # Alternativa: definir variables directamente
     # environment:
     #   - DISCORD_TOKEN=${DISCORD_TOKEN}

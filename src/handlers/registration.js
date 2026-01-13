@@ -18,6 +18,7 @@ import {
 } from '../config/constants.js';
 import { validateContactInHubSpot } from '../services/hubspotValidator.js';
 import { getRoles, clearRoles } from '../services/pendingRolesStore.js';
+import { logRegistration } from '../services/registrationLogger.js';
 
 export async function handleInteraction(interaction) {
   if (interaction.isButton()) {
@@ -115,8 +116,8 @@ async function handleModalSubmit(interaction) {
 
   await interaction.editReply({ embeds: [successEmbed] });
 
-  // Quitar rol "No Verificado" al usuario
-  await removeUnverifiedRole(interaction);
+  // Quitar rol "No Verificado" al usuario y restaurar roles
+  await removeUnverifiedRole(interaction, email);
 }
 
 function createErrorEmbed(reason) {
@@ -150,7 +151,7 @@ function createRetryButton() {
   return new ActionRowBuilder().addComponents(retryButton);
 }
 
-async function removeUnverifiedRole(interaction) {
+async function removeUnverifiedRole(interaction, email) {
   console.log(`🔍 Intentando quitar rol "No Verificado" (${UNVERIFIED_ROLE_ID}) a ${interaction.user.tag}...`);
   
   if (!UNVERIFIED_ROLE_ID) {
@@ -165,12 +166,25 @@ async function removeUnverifiedRole(interaction) {
       try {
         const member = await guild.members.fetch(interaction.user.id);
         if (member) {
+          // Obtener roles guardados antes de restaurar (para el log)
+          const savedRoleIds = getRoles(guild.id, member.user.id);
+          
           // Quitar rol "No Verificado"
           await member.roles.remove(UNVERIFIED_ROLE_ID);
           console.log(`✅ Rol "No Verificado" removido de ${interaction.user.tag} en ${guild.name}`);
           
           // Restaurar roles guardados
           await restoreSavedRoles(member, guild);
+          
+          // Guardar registro en CSV
+          logRegistration({
+            userId: interaction.user.id,
+            userTag: interaction.user.tag,
+            accepted: true,
+            email,
+            roles: savedRoleIds,
+          });
+          
           return;
         }
       } catch (err) {

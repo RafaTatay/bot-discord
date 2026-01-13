@@ -6,8 +6,9 @@ node_modules/
 .env.local
 .env.*.local
 
-# Logs
-logs/
+# Logs (pero mantener .gitkeep)
+logs/*
+!logs/.gitkeep
 *.log
 npm-debug.log*
 
