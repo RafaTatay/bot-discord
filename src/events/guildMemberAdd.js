@@ -102,10 +102,40 @@ async function sendVerificationDM(member) {
 
     console.log(`📨 Mensaje de verificación enviado a ${member.user.tag}`);
   } catch (error) {
-    console.error(
-      `❌ No se pudo enviar DM a ${member.user.tag}:`,
-      error.message
-    );
+    console.error(`❌ No se pudo enviar DM a ${member.user.tag}`);
+    console.error(`   📋 Mensaje: ${error.message}`);
+    console.error(`   🔢 Código: ${error.code || 'N/A'}`);
+    console.error(`   📊 Status: ${error.status || 'N/A'}`);
+    console.error(`   🏷️ Tipo de error: ${error.name || error.constructor.name}`);
+    
+    // Si es un AggregateError (múltiples errores)
+    if (error.errors && Array.isArray(error.errors)) {
+      console.error(`   📦 Errores anidados (${error.errors.length}):`);
+      error.errors.forEach((err, index) => {
+        console.error(`      [${index + 1}] ${err.message} (código: ${err.code || 'N/A'})`);
+      });
+    }
+    
+    // Códigos comunes de Discord:
+    // 50007 - Cannot send messages to this user (DMs deshabilitados)
+    // 50013 - Missing Permissions
+    // 10013 - Unknown User
+    const errorCode = error.code || (error.errors?.[0]?.code);
+    if (errorCode === 50007) {
+      console.error(`   💡 Causa: El usuario tiene los DMs deshabilitados o bloqueó al bot`);
+    } else if (errorCode === 50013) {
+      console.error(`   💡 Causa: El bot no tiene permisos para enviar mensajes`);
+    } else if (errorCode === 10013) {
+      console.error(`   💡 Causa: Usuario desconocido`);
+    }
+    
+    // Log del error completo para debugging
+    if (error.rawError) {
+      console.error(`   🔍 Raw Error:`, JSON.stringify(error.rawError, null, 2));
+    }
+    
+    // Stack trace para debugging profundo
+    console.error(`   📜 Stack: ${error.stack?.split('\n').slice(0, 3).join('\n      ')}`);
   }
 }
 
